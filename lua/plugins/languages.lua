@@ -66,4 +66,5 @@ return {
       { '<c-\\>', '<cmd><C-U>TmuxNavigatePrevious<cr>' },
     },
   },
+    {"neovim/nvim-lspconfig"},
 }

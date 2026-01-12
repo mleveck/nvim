@@ -38,3 +38,6 @@ require('local-plugins.github-navigator').setup({
   prompt_checkout = true,
   auto_focus = true,
 })
+
+-- Watch mypy output file and keep quickfix updated
+--require('local-plugins.mypy_qf').start('.tmp/mypy_watch.log')

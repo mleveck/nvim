@@ -10,9 +10,9 @@ autocmd('TextYankPost', {
   end,
 })
 
--- Python module paths in markdown
+-- Python module paths in markdown and python files
 autocmd('FileType', {
-  pattern = { 'markdown', 'text' },
+  pattern = { 'markdown', 'text', 'python' },
   callback = function()
     vim.bo.includeexpr = 'v:lua.python_includeexpr()'
   end,

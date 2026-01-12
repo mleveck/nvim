@@ -16,26 +16,15 @@ return {
       'leoluz/nvim-dap-go',
       'mfussenegger/nvim-dap-python',
     },
-    keys = function(_, keys)
-      local dap = require('dap')
-      local dapui = require('dapui')
-      return {
-        { '<leader>dc', dap.continue, desc = 'Debug: Start/Continue' },
-        { '<leader>di', dap.step_into, desc = 'Debug: Step Into' },
-        { '<leader>dn', dap.step_over, desc = 'Debug: Step Over' },
-        { '<leader>dr', dap.step_out, desc = 'Debug: Return/Step Out' },
-        { '<leader>b', dap.toggle_breakpoint, desc = 'Debug: Toggle Breakpoint' },
-        {
-          '<leader>B',
-          function()
-            dap.set_breakpoint(vim.fn.input('Breakpoint condition: '))
-          end,
-          desc = 'Debug: Set Breakpoint',
-        },
-        { '<leader>dt', dapui.toggle, desc = 'Debug: See last session result.' },
-        unpack(keys),
-      }
-    end,
+    keys = {
+      { '<leader>dc', function() require('dap').continue() end, desc = 'Debug: Start/Continue' },
+      { '<leader>di', function() require('dap').step_into() end, desc = 'Debug: Step Into' },
+      { '<leader>dn', function() require('dap').step_over() end, desc = 'Debug: Step Over' },
+      { '<leader>dr', function() require('dap').step_out() end, desc = 'Debug: Return/Step Out' },
+      { '<leader>b', function() require('dap').toggle_breakpoint() end, desc = 'Debug: Toggle Breakpoint' },
+      { '<leader>B', function() require('dap').set_breakpoint(vim.fn.input('Breakpoint condition: ')) end, desc = 'Debug: Set Breakpoint' },
+      { '<leader>dt', function() require('dapui').toggle() end, desc = 'Debug: Toggle DAP UI' },
+    },
     config = function()
       local dap = require('dap')
       local dapui = require('dapui')

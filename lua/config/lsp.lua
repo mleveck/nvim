@@ -7,7 +7,7 @@ for _, file in ipairs(vim.fn.glob(lsp_dir .. '/*.lua', false, true)) do
 end
 
 -- Enable all configured servers
-vim.lsp.enable({ 'lua_ls', 'basedpyright', 'gopls' })
+vim.lsp.enable({ 'lua_ls', 'basedpyright', 'gopls', 'clangd' })
 
 -- LSP attach keymaps (these fire when LSP attaches to buffer)
 vim.api.nvim_create_autocmd('LspAttach', {
