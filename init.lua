@@ -41,3 +41,10 @@ require('local-plugins.github-navigator').setup({
 
 -- Watch mypy output file and keep quickfix updated
 --require('local-plugins.mypy_qf').start('.tmp/mypy_watch.log')
+
+-- LLM code reference generator
+require('local-plugins.llm_ref').setup({
+    -- Optional: configure keymaps
+     keymap_normal = '<leader>lr',
+     keymap_visual = '<leader>lr',
+})
