@@ -9,6 +9,114 @@ end
 -- Enable all configured servers
 vim.lsp.enable({ 'lua_ls', 'basedpyright', 'gopls', 'clangd' })
 
+-- Helper functions for Python module-wide class search
+local function find_python_module_root(filepath)
+  local dir = vim.fn.fnamemodify(filepath, ':p:h')
+
+  -- Find the immediate parent directory with __init__.py
+  local init_file = dir .. '/__init__.py'
+  if vim.fn.filereadable(init_file) == 1 then
+    return dir
+  end
+
+  return nil
+end
+
+local function find_python_files_in_module(module_root)
+  local cmd = { 'find', module_root, '-name', '*.py', '-type', 'f' }
+  return vim.fn.systemlist(cmd)
+end
+
+local function get_classes_from_files(files, callback)
+  local all_classes = {}
+
+  if #files == 0 then
+    callback({})
+    return
+  end
+
+  -- Process files in batches to avoid "too many open files" error
+  local batch_size = 25
+  local current_batch = 1
+  local total_batches = math.ceil(#files / batch_size)
+
+  local function process_batch()
+    local start_idx = (current_batch - 1) * batch_size + 1
+    local end_idx = math.min(current_batch * batch_size, #files)
+    local batch_files = {}
+
+    for i = start_idx, end_idx do
+      table.insert(batch_files, files[i])
+    end
+
+    local batch_completed = 0
+    local buffers_to_unload = {}
+
+    for _, filepath in ipairs(batch_files) do
+      local bufnr = vim.fn.bufnr(filepath)
+      local was_loaded = bufnr ~= -1 and vim.fn.bufloaded(bufnr) == 1
+
+      if bufnr == -1 then
+        bufnr = vim.fn.bufadd(filepath)
+        vim.fn.bufload(bufnr)
+        table.insert(buffers_to_unload, bufnr)
+      elseif not was_loaded then
+        vim.fn.bufload(bufnr)
+        table.insert(buffers_to_unload, bufnr)
+      end
+
+      local params = {
+        textDocument = vim.lsp.util.make_text_document_params(bufnr)
+      }
+
+      vim.lsp.buf_request(bufnr, 'textDocument/documentSymbol', params, function(err, result)
+        batch_completed = batch_completed + 1
+
+        if not err and result then
+          local function collect_classes(symbols)
+            for _, symbol in ipairs(symbols) do
+              local kind = vim.lsp.protocol.SymbolKind[symbol.kind]
+              if kind == 'Class' then
+                local range = symbol.range or symbol.location.range
+                table.insert(all_classes, {
+                  filename = filepath,
+                  lnum = range.start.line + 1,
+                  col = range.start.character + 1,
+                  text = symbol.name,
+                  detail = symbol.detail or '',
+                })
+              end
+              if symbol.children then
+                collect_classes(symbol.children)
+              end
+            end
+          end
+          collect_classes(result)
+        end
+
+        if batch_completed == #batch_files then
+          -- Unload buffers we temporarily loaded
+          for _, buf in ipairs(buffers_to_unload) do
+            if vim.api.nvim_buf_is_valid(buf) then
+              vim.api.nvim_buf_delete(buf, { force = true, unload = true })
+            end
+          end
+
+          -- Process next batch or finish
+          if current_batch < total_batches then
+            current_batch = current_batch + 1
+            vim.schedule(process_batch)
+          else
+            callback(all_classes)
+          end
+        end
+      end)
+    end
+  end
+
+  process_batch()
+end
+
 -- LSP attach keymaps (these fire when LSP attaches to buffer)
 vim.api.nvim_create_autocmd('LspAttach', {
   group = vim.api.nvim_create_augroup('lsp-attach', { clear = true }),
@@ -32,6 +140,67 @@ vim.api.nvim_create_autocmd('LspAttach', {
     map('<leader>dsc', function()
       require('telescope.builtin').lsp_document_symbols({ symbols = { 'class' } })
     end, 'Document Symbols Classes')
+    map('<leader>dsC', function()
+      local current_file = vim.api.nvim_buf_get_name(0)
+      local module_root = find_python_module_root(current_file)
+
+      if not module_root then
+        vim.notify('Not inside a Python module (no __init__.py found)', vim.log.levels.WARN)
+        return
+      end
+
+      local python_files = find_python_files_in_module(module_root)
+
+      -- Safety check: limit to avoid lockups on large modules
+      local max_files = 200
+      if #python_files > max_files then
+        vim.notify(
+          string.format('Module has %d files (limit: %d). Use <leader>ws for workspace symbols instead.',
+            #python_files, max_files),
+          vim.log.levels.WARN
+        )
+        return
+      end
+
+      vim.notify(
+        string.format('Searching %d files in module: %s',
+          #python_files, vim.fn.fnamemodify(module_root, ':t')),
+        vim.log.levels.INFO
+      )
+
+      get_classes_from_files(python_files, function(classes)
+        if #classes == 0 then
+          vim.notify('No classes found in module', vim.log.levels.INFO)
+          return
+        end
+
+        require('telescope.pickers').new({}, {
+          prompt_title = 'Classes in Module: ' .. vim.fn.fnamemodify(module_root, ':t'),
+          finder = require('telescope.finders').new_table({
+            results = classes,
+            entry_maker = function(entry)
+              local relative_path = vim.fn.fnamemodify(entry.filename, ':~:.')
+              local display_text = string.format('%s (%s)', entry.text, relative_path)
+
+              return {
+                value = entry,
+                display = display_text,
+                ordinal = entry.text .. ' ' .. relative_path,
+                filename = entry.filename,
+                lnum = entry.lnum,
+                col = entry.col,
+                symbol_type = 'Class',
+              }
+            end,
+          }),
+          sorter = require('telescope.config').values.prefilter_sorter {
+            tag = "symbol_type",
+            sorter = require('telescope.config').values.generic_sorter({}),
+          },
+          previewer = require('telescope.config').values.qflist_previewer({}),
+        }):find()
+      end)
+    end, 'Module Classes')
     map('<leader>dsm', function()
       -- Find enclosing class using treesitter
       local node = vim.treesitter.get_node()

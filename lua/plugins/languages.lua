@@ -1,21 +1,21 @@
 return {
   -- Conjure for REPL-driven development (Lisps + Python)
-  {
-    'Olical/conjure',
-    ft = { 'clojure', 'fennel', 'scheme', 'lisp', 'python' },
-    init = function()
-      -- Conjure configuration (must be set before plugin loads)
-      vim.g['conjure#mapping#doc_word'] = false
-      vim.g['conjure#mapping#prefix'] = '<localleader>p'
-    end,
-  },
+  -- {
+  --   'Olical/conjure',
+  --   ft = { 'clojure', 'fennel', 'scheme', 'lisp', 'python' },
+  --   init = function()
+  --     -- Conjure configuration (must be set before plugin loads)
+  --     vim.g['conjure#mapping#doc_word'] = false
+  --     vim.g['conjure#mapping#prefix'] = '<localleader>p'
+  --   end,
+  -- },
 
   -- Jupytext for Jupyter notebook integration
-  {
-    'GCBallesteros/jupytext.nvim',
-    config = true,
-    lazy = false,
-  },
+  -- {
+  --   'GCBallesteros/jupytext.nvim',
+  --   config = true,
+  --   lazy = false,
+  -- },
 
   -- Python documentation
   { 'girishji/pythondoc.vim' },
